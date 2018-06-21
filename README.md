@@ -16,7 +16,7 @@ While this does work decently well, there are some pending issues, namely:
 
 The object tracking and Kalman Filter implementation (`tracker.py` and `kalman_filter.py`, and a bit of the drawing/detection methods in `main.py`) are from [Srini Ananthakrishnan's multiple object tracking](https://github.com/srianant/kalman_filter_multi_object_tracking)
 
-The livestream (Highway 80 at Whitmore Grade) is provided by the California Department of Transportation
+The [livestream](http://dot.ca.gov/d3/cameras.html) (Highway 80 at Whitmore Grade) is provided by the California Department of Transportation
 
 
 Just a side note: Before realizing that OpenCV's `VideoCapture` was based on FFMPEG, and could therefore capture hlsvariant livestreams, I manually fetched new chunks and chunklists. I found this method to be somewhat more reliable than directly using VideoCapture, and definitely more reliable then piping FFMPEG using `subprocess`, as those methods can often result in 'jumps' in the livestream. The upside to these methods is that they are considerably faster than manual chunk/list loading. Also, manually updating the stream meant that I could easily account for load lag. In the end, I decided to go with direct `VideoCapture` because of its speed and because it allowed me to remove asynchrony completely.
