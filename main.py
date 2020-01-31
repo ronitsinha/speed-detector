@@ -72,7 +72,7 @@ if __name__ == '__main__':
 		opening = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
 		dilation = cv2.morphologyEx(opening, cv2.MORPH_OPEN, kernel_dilate)
 
-		_, contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
 		# Find centers of all detected objects
 		for cnt in contours:
