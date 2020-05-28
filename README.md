@@ -1,23 +1,49 @@
 # Python/OpenCV Speed Detector #
 
-This is a program that uses OpenCV and Kalman Filters to detect and track cars from a traffic cam livestream. Once a car passes a certain distance, its speed is calculated and checked against the speed limit. If the speed exceeds the limit, an image is saved, showing both the speeding car and its speed.
+This is a program that uses OpenCV to calculate cars' speeds from a traffic cam livestream.
 
-Here is a screenshot of the program in action:
+### How it works ###
+
+This demo gif will be referenced multiple times in the explanation, so I'll just leave it here.
 
 ![Example](./demo.gif)
 
-While this does work decently well, there are some pending issues, namely:
-* Objects that start in the middle of the frame will have inaccurately high speeds, due to being on the screen for less time
-* Loading the livestream noticeably lags when fetching a new chunklist, resulting in slower speeds due to lag time
-* Some noise is still present and detection, and it can often mess up tracking and speeds as a result
-* It can be inconsistent with cars coming from either side of the road
+#### Cropping ####
+
+The first thing my program does to the video is crop out any unnecessary areas. In the gif below, the black box is blocking out a part of the screen that has motion but shouldn't be part of our detection. These cropped regions can be manually selected at runtime (click and drag on the "Source Image" window) and are saved in `settings.json` (when 's' key is pressed). Saved regions are cropped out on startup.
+
+#### Vehicle Detection ####
+
+Now that the unwanted areas are removed, we can use computer vision to isolate the vehicles (after all, that's what we really care about!). 
+
+I use KNN background subtraction and morphology to isolate the vehicles and detect their contours. I'm not going to explain too much since these are default OpenCV functions, but you can see how I use them in the first part of `process_frame()` and `filter_mask()` in `main.py`.
+
+#### Vehicle Tracking ####
+
+To find a car's speed, we need to know how its moving from frame to frame. We can already detect cars on any given frame, but we need a kind of permanence to detect as the move in the video. This is a rather long process, but in general we compare the current detections to the previous detections, and based on manually set parameters, we determine whether or not the new detections are valid movements. The StackOverflow post in the credits goes does a much better job of explaining this.
+
+#### Speed Calculation ####
+
+This program has two methods of detecting speed: *distance mode* and *average mode*.
+
+*Distance mode* will takes in a preset "distance" value (how long the road in the video is). The program uses this value and the vehicle's time on screen to calculate its speed.
+*Average mode* samples a certain number of vehicles to find there average speed on screen (in pixels). Subsequent cars are compared to the average, and their speeds are reported as percent differences from the average. This mode is useful when you don't know the distance of the road in the video, so it can be applied to almost any road.
+
+It's important to note that speed is calcuated once a vehicle passes the light blue line (demo.gif). The position and angle (i.e. horizontal/vertical) can be customized for different roads/video sources.
+
+#### Settings ####
+
+I designed this program so that it could work on virtually any video source.
+
+`settings.json` stores settings for each individual video source (I call them "roads" in my program). A few examples include the positon of the detection line, the url of the video source, and the cropped out regions. Of course, you can look at `settings.json` to see how I actually store these values.
+
+### Improvements ###
+
+While my program works decently well, there are some things I'd like to work on, namely:
+* A manual livestream loader to reduce lag/random jumps (it would need to be manual because it needs to access [.m3u8 metadata](https://tools.ietf.org/html/rfc8216#section-4.3))
+* Lane detection so that this program could work on multi-lane roads
 
 ### Credits ###
 
 This [incredible StackOverflow post](https://stackoverflow.com/questions/36254452/counting-cars-opencv-python-issue/36274515#36274515), which largely inspired me to redo this project in the first place.
-
 The [livestreams](http://dot.ca.gov/d3/cameras.html) are provided by the California Department of Transportation
-
-
-### Side Note ###
-Before realizing that OpenCV's `VideoCapture` was based on FFMPEG, and could therefore capture hlsvariant livestreams, I manually fetched new chunks and chunklists. I found this method to be somewhat more reliable than directly using VideoCapture, and definitely more reliable then piping FFMPEG using `subprocess`, as those methods can often result in 'jumps' in the livestream. The upside to these methods is that they are considerably faster than manual chunk/list loading. Also, manually updating the stream meant that I could easily account for load lag. In the end, I decided to go with direct `VideoCapture` because of its speed and because it allowed me to remove asynchrony completely.
