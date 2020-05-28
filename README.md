@@ -4,7 +4,7 @@ This is a program that uses OpenCV and Kalman Filters to detect and track cars f
 
 Here is a screenshot of the program in action:
 
-![Screenshot](./images/example.png)
+![Example](./demo.gif)
 
 While this does work decently well, there are some pending issues, namely:
 * Objects that start in the middle of the frame will have inaccurately high speeds, due to being on the screen for less time
@@ -14,9 +14,9 @@ While this does work decently well, there are some pending issues, namely:
 
 ### Credits ###
 
-The object tracking and Kalman Filter implementation (`tracker.py` and `kalman_filter.py`, and a bit of the drawing/detection methods in `main.py`) are from [Srini Ananthakrishnan's multiple object tracking](https://github.com/srianant/kalman_filter_multi_object_tracking)
+This [incredible StackOverflow post](https://stackoverflow.com/questions/36254452/counting-cars-opencv-python-issue/36274515#36274515), which largely inspired me to redo this project in the first place.
 
-The [livestream](http://dot.ca.gov/d3/cameras.html) (Highway 80 at Whitmore Grade) is provided by the California Department of Transportation
+The [livestreams](http://dot.ca.gov/d3/cameras.html) are provided by the California Department of Transportation
 
 
 ### Side Note ###
