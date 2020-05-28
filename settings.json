@@ -1,0 +1,275 @@
+{
+    "_comment": "for divider_pass_side. -1: car passed when (x or y) < divider; 1: car passed when (x or y) > divider",
+    "80_donner_lake": {
+        "stream_url": "http://wzmedia.dot.ca.gov:1935/D3/80_donner_lake.stream/index.m3u8",
+        "divider": 250,
+        "divider_horizontal": true,
+        "divider_pass_side": -1,
+        "vector_angle_min": 85,
+        "vector_angle_max": 175,
+        "distance": 0.0366458333,
+        "cropped_rects": [
+            [
+                [
+                    473,
+                    174
+                ],
+                [
+                    473,
+                    174
+                ]
+            ],
+            [
+                [
+                    2,
+                    194
+                ],
+                [
+                    115,
+                    387
+                ]
+            ],
+            [
+                [
+                    490,
+                    157
+                ],
+                [
+                    490,
+                    158
+                ]
+            ]
+        ]
+    },
+    "80_kingvale_eb": {
+        "stream_url": "http://wzmedia.dot.ca.gov:1935/D3/80_kingvale_eb.stream/index.m3u8",
+        "divider": 270,
+        "divider_horizontal": true,
+        "divider_pass_side": -1,
+        "vector_angle_min": -150,
+        "vector_angle_max": -110,
+        "distance": 0.0314394,
+        "cropped_rects": [
+            [
+                [
+                    451,
+                    195
+                ],
+                [
+                    451,
+                    195
+                ]
+            ],
+            [
+                [
+                    100,
+                    135
+                ],
+                [
+                    187,
+                    198
+                ]
+            ],
+            [
+                [
+                    3,
+                    178
+                ],
+                [
+                    102,
+                    252
+                ]
+            ],
+            [
+                [
+                    57,
+                    152
+                ],
+                [
+                    127,
+                    206
+                ]
+            ],
+            [
+                [
+                    83,
+                    152
+                ],
+                [
+                    143,
+                    224
+                ]
+            ],
+            [
+                [
+                    96,
+                    165
+                ],
+                [
+                    161,
+                    216
+                ]
+            ],
+            [
+                [
+                    154,
+                    89
+                ],
+                [
+                    255,
+                    157
+                ]
+            ],
+            [
+                [
+                    182,
+                    119
+                ],
+                [
+                    235,
+                    182
+                ]
+            ],
+            [
+                [
+                    179,
+                    153
+                ],
+                [
+                    235,
+                    164
+                ]
+            ],
+            [
+                [
+                    193,
+                    178
+                ],
+                [
+                    242,
+                    197
+                ]
+            ],
+            [
+                [
+                    185,
+                    174
+                ],
+                [
+                    200,
+                    193
+                ]
+            ],
+            [
+                [
+                    222,
+                    151
+                ],
+                [
+                    258,
+                    170
+                ]
+            ],
+            [
+                [
+                    245,
+                    123
+                ],
+                [
+                    279,
+                    147
+                ]
+            ],
+            [
+                [
+                    241,
+                    144
+                ],
+                [
+                    281,
+                    155
+                ]
+            ],
+            [
+                [
+                    90,
+                    227
+                ],
+                [
+                    159,
+                    272
+                ]
+            ],
+            [
+                [
+                    46,
+                    229
+                ],
+                [
+                    101,
+                    314
+                ]
+            ],
+            [
+                [
+                    5,
+                    112
+                ],
+                [
+                    211,
+                    257
+                ]
+            ],
+            [
+                [
+                    15,
+                    227
+                ],
+                [
+                    196,
+                    284
+                ]
+            ],
+            [
+                [
+                    7,
+                    226
+                ],
+                [
+                    125,
+                    313
+                ]
+            ],
+            [
+                [
+                    95,
+                    131
+                ],
+                [
+                    241,
+                    250
+                ]
+            ],
+            [
+                [
+                    191,
+                    64
+                ],
+                [
+                    359,
+                    152
+                ]
+            ]
+        ]
+    },
+    "80_whitmore_grade": {
+        "stream_url": "http://wzmedia.dot.ca.gov:1935/D3/80_whitmore_grade.stream/playlist.m3u8",
+        "divider": 350,
+        "divider_horizontal": true,
+        "divider_pass_side": 1,
+        "vector_angle_max": 90,
+        "vector_angle_min": 30,
+        "distance": 0,
+        "cropped_rects": []
+    }
+}

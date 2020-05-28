@@ -1,169 +1,230 @@
+import sys
+import time
+import json
+import re
+
 import cv2
 import numpy as np
-import time
-import copy
-import os
-import glob
-import multiprocessing as mpr
-from datetime import datetime
 
-from kalman_filter import KalmanFilter
-from tracker import Tracker
+from vehicle_counter import VehicleCounter
+
+road = None
+
+if len(sys.argv) < 2:
+	raise Exception("No road specified.")
+
+road_name = sys.argv[1]
+
+with open('settings.json') as f:
+	data = json.load(f)
+
+	try:
+		road = data[road_name]
+	except KeyError:
+		raise Exception('Road name not recognized.')
+
+WAIT_TIME = 1
+
+# Colors for drawing on processed frames
+DIVIDER_COLOR = (255, 255, 0)
+BOUNDING_BOX_COLOR = (255, 0, 0)
+CENTROID_COLOR = (0, 0, 255)
+
+# For cropped rectangles
+ref_points = []
+ref_rects = []
+
+def nothing(x):
+	pass
+
+def click_and_crop (event, x, y, flags, param):
+	global ref_points
+
+	if event == cv2.EVENT_LBUTTONDOWN:
+		ref_points = [(x,y)]
+
+	elif event == cv2.EVENT_LBUTTONUP:
+		(x1, y1), x2, y2 = ref_points[0], x, y
+
+		ref_points[0] = ( min(x1,x2), min(y1,y2) )		
+
+		ref_points.append ( ( max(x1,x2), max(y1,y2) ) )
+
+		ref_rects.append( (ref_points[0], ref_points[1]) )
+
+# Write cropped rectangles to file for later use/loading
+def save_cropped():
+	global ref_rects
+
+	with open('settings.json', 'r+') as f:
+		data = json.load(f)
+		data[road_name]['cropped_rects'] = ref_rects
+
+		f.seek(0)
+		json.dump(data, f, indent=4)
+		f.truncate()
+
+	print('Saved ref_rects to settings.json!')
+
+# Load any saved cropped rectangles
+def load_cropped ():
+	global ref_rects
+
+	ref_rects = road['cropped_rects']
+
+	print('Loaded ref_rects from settings.json!')
+
+# Remove cropped regions from frame
+def remove_cropped (gray, color):
+	cropped = gray.copy()
+	cropped_color = color.copy()
+
+	for rect in ref_rects:
+		cropped[ rect[0][1]:rect[1][1], rect[0][0]:rect[1][0] ] = 0
+		cropped_color[ rect[0][1]:rect[1][1], rect[0][0]:rect[1][0] ] = (0,0,0)
+
+
+	return cropped, cropped_color
+
+def filter_mask (mask):
+	# I want some pretty drastic closing
+	kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20, 20))
+	kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (8, 8))
+	kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+
+	# Remove noise
+	opening = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open)
+	# Close holes within contours
+	closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel_close)
+	# Merge adjacent blobs
+	dilation = cv2.dilate(closing, kernel_dilate, iterations = 2)
+
+	return dilation
+
+def get_centroid (x, y, w, h):
+	x1 = w // 2
+	y1 = h // 2
+
+	return(x+x1, y+y1)
+
+def detect_vehicles (mask):
+
+	MIN_CONTOUR_WIDTH = 10
+	MIN_CONTOUR_HEIGHT = 10
+
+	contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+	matches = []
+
+	# Hierarchy stuff:
+	# https://stackoverflow.com/questions/11782147/python-opencv-contour-tree-hierarchy
+	for (i, contour) in enumerate(contours):
+		x, y, w, h = cv2.boundingRect(contour)
+		contour_valid = (w >= MIN_CONTOUR_WIDTH) and (h >= MIN_CONTOUR_HEIGHT)
+
+		if not contour_valid or not hierarchy[0,i,3] == -1:
+			continue
+
+		centroid = get_centroid(x, y, w, h)
+
+		matches.append( ((x,y,w,h), centroid) )
+
+	return matches
+
+def process_frame(frame_number, frame, bg_subtractor, car_counter):
+	processed = frame.copy()
+
+	gray = cv2.cvtColor(processed, cv2.COLOR_BGR2GRAY)
+
+	# remove specified cropped regions
+	cropped, processed = remove_cropped(gray, processed)
+
+	if car_counter.is_horizontal:
+		cv2.line(processed, (0, car_counter.divider), (frame.shape[1], car_counter.divider), DIVIDER_COLOR, 1)
+	else:
+		cv2.line(processed, (car_counter.divider, 0), (car_counter.divider, frame.shape[0]), DIVIDER_COLOR, 1)
+
+	fg_mask = bg_subtractor.apply(cropped)
+	fg_mask = filter_mask(fg_mask)
+
+	matches = detect_vehicles(fg_mask)
+
+	for (i, match) in enumerate(matches):
+		contour, centroid = match
+
+		x,y,w,h = contour
+
+		cv2.rectangle(processed, (x,y), (x+w-1, y+h-1), BOUNDING_BOX_COLOR, 1)
+		cv2.circle(processed, centroid, 2, CENTROID_COLOR, -1)
+
+	car_counter.update_count(matches, frame_number, processed)
+
+	cv2.imshow('Filtered Mask', fg_mask)
+
+	return processed
+
+# https://medium.com/@galen.ballew/opencv-lanedetection-419361364fc0
+def lane_detection (frame):
+	gray = cv2.cvtColor(processed, cv2.COLOR_BGR2GRAY)
+
+	cropped = remove_cropped(gray)
+
+
+# I was going to use a haar cascade, but i decided against it because I don't want to train one, and even if I did it probably wouldn't work across different traffic cameras
+def main ():
+	# I think KNN works better than MOG2, specifically with trucks/large vehicles
+	# TODO: Block out snowbank where shadows are strongly reflected!
+	bg_subtractor = cv2.createBackgroundSubtractorKNN(detectShadows=True)
+	car_counter = None
+
+	load_cropped()
+
+	cap = cv2.VideoCapture(road['stream_url'])
+	cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+
+	cv2.namedWindow('Source Image')
+	cv2.setMouseCallback('Source Image', click_and_crop)
+
+	frame_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+	frame_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+	frame_number = -1
+
+	while True:
+		frame_number += 1
+		ret, frame = cap.read()
+
+		if not ret:
+			print('Frame capture failed, stopping...')
+			break
+
+		if car_counter is None:
+			car_counter = VehicleCounter(frame.shape[:2], road, cap.get(cv2.CAP_PROP_FPS), samples=10)
+
+		processed = process_frame(frame_number, frame, bg_subtractor, car_counter)
+
+		cv2.imshow('Source Image', frame)
+		cv2.imshow('Processed Image', processed)
+
+		key = cv2.waitKey(WAIT_TIME)
+
+		if key == ord('s'):
+			# save rects!
+			save_cropped()
+		elif key == ord('q') or key == 27:
+			break
+
+		# Keep video's speed stable
+		# I think that this causes the abrupt jumps in the video
+		time.sleep( 1.0 / cap.get(cv2.CAP_PROP_FPS) )
+
+
+	print('Closing video capture...')
+	cap.release()
+	cv2.destroyAllWindows()
+	print('Done.')
 
 
 
 if __name__ == '__main__':
-	# The one I first used for testing; after staring at it so much, I've grown attached to this road :3
-	the_og_base_url = 'http://wzmedia.dot.ca.gov:1935/D3/89_rampart.stream/'
-
-	BASE_URL = 'http://wzmedia.dot.ca.gov:1935/D3/80_whitmore_grade.stream/'
-	FPS = 30
-	'''
-		Distance to line in road: ~0.025 miles
-	'''
-	ROAD_DIST_MILES = 0.025
-
-	'''
-		Speed limit of urban freeways in California (50-65 MPH)
-	'''
-	HIGHWAY_SPEED_LIMIT = 65
-
-	# Initial background subtractor and text font
-	fgbg = cv2.createBackgroundSubtractorMOG2()
-	font = cv2.FONT_HERSHEY_PLAIN
-
-	centers = [] 
-
-	# y-cooridinate for speed detection line
-	Y_THRESH = 240
-
-	blob_min_width_far = 6
-	blob_min_height_far = 6
-
-	blob_min_width_near = 18
-	blob_min_height_near = 18
-
-	frame_start_time = None
-
-	# Create object tracker
-	tracker = Tracker(80, 3, 2, 1)
-
-	# Capture livestream
-	cap = cv2.VideoCapture (BASE_URL + 'playlist.m3u8')
-
-	while True:
-		centers = []
-		frame_start_time = datetime.utcnow()
-		ret, frame = cap.read()
-
-		orig_frame = copy.copy(frame)
-
-		#  Draw line used for speed detection
-		cv2.line(frame,(0, Y_THRESH),(640, Y_THRESH),(255,0,0),2)
-
-
-		# Convert frame to grayscale and perform background subtraction
-		gray = cv2.cvtColor (frame, cv2.COLOR_BGR2GRAY)
-		fgmask = fgbg.apply (gray)
-
-		# Perform some Morphological operations to remove noise
-		kernel = np.ones((4,4),np.uint8)
-		kernel_dilate = np.ones((5,5),np.uint8)
-		opening = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
-		dilation = cv2.morphologyEx(opening, cv2.MORPH_OPEN, kernel_dilate)
-
-		_, contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-		# Find centers of all detected objects
-		for cnt in contours:
-			x, y, w, h = cv2.boundingRect(cnt)
-
-			if y > Y_THRESH:
-				if w >= blob_min_width_near and h >= blob_min_height_near:
-					center = np.array ([[x+w/2], [y+h/2]])
-					centers.append(np.round(center))
-
-					cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
-			else:
-				if w >= blob_min_width_far and h >= blob_min_height_far:
-					center = np.array ([[x+w/2], [y+h/2]])
-					centers.append(np.round(center))
-
-					cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-
-		if centers:
-			tracker.update(centers)
-
-			for vehicle in tracker.tracks:
-				if len(vehicle.trace) > 1:
-					for j in range(len(vehicle.trace)-1):
-                        # Draw trace line
-						x1 = vehicle.trace[j][0][0]
-						y1 = vehicle.trace[j][1][0]
-						x2 = vehicle.trace[j+1][0][0]
-						y2 = vehicle.trace[j+1][1][0]
-
-						cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 2)
-
-					try:
-						'''
-							TODO: account for load lag
-						'''
-
-						trace_i = len(vehicle.trace) - 1
-
-						trace_x = vehicle.trace[trace_i][0][0]
-						trace_y = vehicle.trace[trace_i][1][0]
-
-						# Check if tracked object has reached the speed detection line
-						if trace_y <= Y_THRESH + 5 and trace_y >= Y_THRESH - 5 and not vehicle.passed:
-							cv2.putText(frame, 'I PASSED!', (int(trace_x), int(trace_y)), font, 1, (0, 255, 255), 1, cv2.LINE_AA)
-							vehicle.passed = True
-
-							load_lag = (datetime.utcnow() - frame_start_time).total_seconds()
-
-							time_dur = (datetime.utcnow() - vehicle.start_time).total_seconds() - load_lag
-							time_dur /= 60
-							time_dur /= 60
-
-							
-							vehicle.mph = ROAD_DIST_MILES / time_dur
-
-							# If calculated speed exceeds speed limit, save an image of speeding car
-							if vehicle.mph > HIGHWAY_SPEED_LIMIT:
-								print ('UH OH, SPEEDING!')
-								cv2.circle(orig_frame, (int(trace_x), int(trace_y)), 20, (0, 0, 255), 2)
-								cv2.putText(orig_frame, 'MPH: %s' % int(vehicle.mph), (int(trace_x), int(trace_y)), font, 1, (0, 0, 255), 1, cv2.LINE_AA)
-								cv2.imwrite('speeding_%s.png' % vehicle.track_id, orig_frame)
-								print ('FILE SAVED!')
-
-					
-						if vehicle.passed:
-							# Display speed if available
-							cv2.putText(frame, 'MPH: %s' % int(vehicle.mph), (int(trace_x), int(trace_y)), font, 1, (0, 255, 255), 1, cv2.LINE_AA)
-						else:
-							# Otherwise, just show tracking id
-							cv2.putText(frame, 'ID: '+ str(vehicle.track_id), (int(trace_x), int(trace_y)), font, 1, (255, 255, 255), 1, cv2.LINE_AA)
-					except:
-						pass
-
-
-		# Display all images
-		cv2.imshow ('original', frame)
-		cv2.imshow ('opening/dilation', dilation)
-		cv2.imshow ('background subtraction', fgmask)
-
-		# Quit when escape key pressed
-		if cv2.waitKey(5) == 27:
-			break
-
-		# Sleep to keep video speed consistent
-		time.sleep(1.0 / FPS)
-
-	# Clean up
-	cap.release()
-	cv2.destroyAllWindows()
-
-	# remove all speeding_*.png images created in runtime
-	for file in glob.glob('speeding_*.png'):
-		os.remove(file)
+	main()
