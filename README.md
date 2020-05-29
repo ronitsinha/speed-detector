@@ -27,6 +27,7 @@ To find a car's speed, we need to know how its moving from frame to frame. We ca
 This program has two methods of detecting speed: *distance mode* and *average mode*.
 
 *Distance mode* will takes in a preset "distance" value (how long the road in the video is). The program uses this value and the vehicle's time on screen to calculate its speed.
+
 *Average mode* samples a certain number of vehicles to find there average speed on screen (in pixels). Subsequent cars are compared to the average, and their speeds are reported as percent differences from the average. This mode is useful when you don't know the distance of the road in the video, so it can be applied to almost any road. The demo gif is calculating speed in average mode.
 
 It's important to note that speed is calculated once a vehicle passes the light blue line (again, see the demo gif). The position and angle (i.e. horizontal/vertical) can be customized for different roads/video sources.
