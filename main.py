@@ -109,6 +109,7 @@ def get_centroid (x, y, w, h):
 
 def detect_vehicles (mask):
 
+	# TODO: make this customizable?
 	MIN_CONTOUR_WIDTH = 10
 	MIN_CONTOUR_HEIGHT = 10
 

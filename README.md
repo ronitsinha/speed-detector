@@ -20,7 +20,7 @@ I use KNN background subtraction and morphology to isolate the vehicles and dete
 
 #### Vehicle Tracking ####
 
-To find a car's speed, we need to know how its moving from frame to frame. We can already detect cars on any given frame, but we need a kind of permanence to detect as the move in the video. This is a rather long process, but in general we compare the current detections to the previous detections, and based on manually set parameters, we determine whether or not the new detections are valid movements. The StackOverflow post in the credits goes does a much better job of explaining this.
+To find a car's speed, we need to know how it's moving from frame to frame. We can already detect cars on any given frame, but we need a kind of permanence to detect as the move in the video. This is a rather long process, but in general we compare the current detections to the previous detections, and based on manually set parameters, we determine whether or not the new detections are valid movements. The StackOverflow post in the credits goes does a much better job of explaining this.
 
 #### Speed Calculation ####
 
@@ -41,7 +41,7 @@ I designed this program so that it could work on virtually any video source.
 ### Improvements ###
 
 While my program works decently well, there are some things I'd like to work on, namely:
-* A manual livestream loader to reduce lag/random jumps (it would need to be manual because it needs to access [.m3u8 metadata](https://tools.ietf.org/html/rfc8216#section-4.3))
+* A manual livestream loader to reduce lag/random jumps (it would need to be manual because it needs to access [.m3u8 metadata](https://tools.ietf.org/html/rfc8216#section-4.3), which OpenCV's `VideoCapture` can't do)
 * Lane detection so that this program could work on multi-lane roads
 
 ### Credits ###
