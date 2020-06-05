@@ -53,8 +53,8 @@ while True:
 	# TODO: In the actual program, use THIS instead of cropped regions
 	warped = cv2.warpPerspective(frame, matrix, (400,600))
 
-	gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-	hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+	gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+	hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
 
 	fg_mask = bg_subtractor.apply(gray)
 
@@ -72,14 +72,14 @@ while True:
 
 
 	# Edge detection
-	edges = cv2.Canny(blur, 100, 200)
+	edges = cv2.Canny(subtract, 100, 200)
 
 	linesP = cv2.HoughLinesP(edges, 1, np.pi / 180, 20, None, 10, 50)
 
 	if linesP is not None:
 		for i in range(0, len(linesP)):
 			l = linesP[i][0]
-			cv2.line(roi, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv2.LINE_AA)
+			cv2.line(warped, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv2.LINE_AA)
 
 	# TODO: Read this: https://www.hackster.io/kemfic/curved-lane-detection-34f771
 	cv2.imwrite('lane_test.png', subtract)
