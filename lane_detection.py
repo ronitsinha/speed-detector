@@ -3,7 +3,7 @@ import time
 import cv2
 import numpy as np
 
-url = 'http://wzmedia.dot.ca.gov:1935/D3/80_donner_lake.stream/index.m3u8'
+url = 'http://wzmedia.dot.ca.gov:1935/D3/80_kingvale_eb.stream/index.m3u8'
 
 lower_yellow = np.array([20, 38, 153], dtype='uint8')
 upper_yellow = np.array([30, 255, 255], dtype='uint8')
@@ -28,11 +28,11 @@ cv2.createTrackbar('High S', 'Final', 0, 255, lambda _: None)
 cv2.createTrackbar('High V', 'Final', 0, 255, lambda _: None)
 
 # Testing out some perspective stuff
-whitmore_grade_pts = np.float32([ [111,94], [230,94], [336,480], [640,429] ])
+whitmore_grade_pts = np.float32([ [90,94], [230,94], [300,480], [640,429] ])
 donner_lake_pts = np.float32([ [270,180], [406,180], [284,480],[640,367] ])
 screen_pts = np.float32([ [0,0], [400,0], [0,600], [400,600] ])
 
-matrix = cv2.getPerspectiveTransform(donner_lake_pts, screen_pts)
+matrix = cv2.getPerspectiveTransform(whitmore_grade_pts, screen_pts)
 
 cap = cv2.VideoCapture(url)
 
@@ -47,14 +47,16 @@ while True:
 		break
 
 	frame = raw.copy()
+	blur = cv2.GaussianBlur(frame, (5,5), 0)
 
-	roi = frame[ 180:480, 270:640 ]
+
+	roi = frame[ 100:640 ]
 
 	# TODO: In the actual program, use THIS instead of cropped regions
 	warped = cv2.warpPerspective(frame, matrix, (400,600))
 
-	gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-	hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
+	gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+	hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
 	fg_mask = bg_subtractor.apply(gray)
 
@@ -74,17 +76,21 @@ while True:
 	# Edge detection
 	edges = cv2.Canny(subtract, 100, 200)
 
-	linesP = cv2.HoughLinesP(edges, 1, np.pi / 180, 20, None, 10, 50)
-
+	linesP = cv2.HoughLinesP(edges, 1, np.pi / 180, 20, None, 30, 50)
 	if linesP is not None:
 		for i in range(0, len(linesP)):
-			l = linesP[i][0]
-			cv2.line(warped, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv2.LINE_AA)
+			x1,y1,x2,y2 = linesP[i][0]
+			
+			cv2.line(roi, (x1,y1), (x2,y2), (0,0,255), 1, cv2.LINE_AA)
+
+
+
 
 	# TODO: Read this: https://www.hackster.io/kemfic/curved-lane-detection-34f771
+
 	cv2.imwrite('lane_test.png', subtract)
 
-	cv2.imshow('Source', frame)
+	cv2.imshow('Source', roi)
 	cv2.imshow('Final', subtract)
 	cv2.imshow('Warped', warped)
 
