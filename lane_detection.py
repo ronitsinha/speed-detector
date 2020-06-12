@@ -88,7 +88,7 @@ while True:
 
 	# TODO: Read this: https://www.hackster.io/kemfic/curved-lane-detection-34f771
 
-	cv2.imwrite('lane_test.png', subtract)
+	cv2.imwrite('lane_test2.png', subtract)
 
 	cv2.imshow('Source', roi)
 	cv2.imshow('Final', subtract)

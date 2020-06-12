@@ -1,149 +1,110 @@
+import random
+
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-img = cv2.imread('lane_test.png')
+import sklearn.cluster # KMeans
+import sklearn.metrics # silhouette_score
 
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# https://www.ingentaconnect.com/contentone/ist/ei/2016/00002016/00000014/art00011?crawler=true
+def segmentation_v2 (binary):
 
-_, thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+	kernel = np.ones((4,4), np.uint8)
 
+	dilation = cv2.dilate(binary, kernel, iterations=1)
 
-roi = thresh
+	# edges = cv2.Canny(dilation, 100, 200)
+	out = np.dstack(( np.zeros_like(dilation) , np.zeros_like(dilation), np.zeros_like(dilation) )) * 255
 
-# for i in range(6):
+	# Filter contours by area
+	contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	contours = [c for c in contours if cv2.contourArea(c) > 70]
 
-# 	f, (ax1, ax2) = plt.subplots(1, 2)
+	# cv2.drawContours(out, contours, -1, (0,255,0), 3)
 
-# 	roi = img[i*100:(i*100)+100]
-# 	hist = np.sum(roi, axis=0)
+	groups = {}
 
+	linesP = cv2.HoughLinesP(dilation, 1, np.pi / 180, 20, None, 2, 20)
+	if linesP is not None:
+		for i in range(0, len(linesP)):
+			x1,y1,x2,y2 = linesP[i][0]			
 
-# 	ax1.imshow(roi)
-# 	ax2.plot(hist)
+			line = []
 
+			if y1 > y2:
+				line = [x1,y1,x2,y2]
+			else:
+				line = [x2,y2,x1,y1]
 
-# This algorithm SUCKS, read this paper instead!
-# https://arxiv.org/pdf/1501.03124.pdf
-
-# TODO: use distance to decide if a curve can be added to existing curve + bottom-up search
-def segmentation (binary, passes=5, diff_threshold=0.2):
-	curves_x = np.array([])
-	curves_y = np.array([])
-	discontinuity = np.array([])
-
-	out = np.zeros_like(binary)
-
-	img_height = binary.shape[0]
-	window_height = img_height//passes
-
-	for i in range(passes):
-		# Bottom-up search
-		window = binary[ img_height-(i+1)*window_height : img_height-i*window_height ]
-
-		nonzeros = np.transpose(window.nonzero())
-		nonzeros = nonzeros [ nonzeros[:,1].argsort() ]
-
-		nonzero_x = nonzeros[:,1]
-		nonzero_y = nonzeros[:,0]
-
-		# Split where not consecutive
-		nonzero_x_grouped = np.array( np.split(nonzero_x,  np.where( np.diff(nonzero_x)>1 )[0]+1 ) )
-		nonzero_y_grouped = np.array( np.split(nonzero_y,  np.where( np.diff(nonzero_x)>1 )[0]+1 ) ) - (i+1)*window_height
-
-
-		# try:
-		# 	for gy, gx in zip(nonzero_y_grouped[0],nonzero_x_grouped[0]):
-		# 		out[gy-(i+1)*window_height, gx] = 1
-		# except Exception as e:
-		# 	print('Error')
-		# 	continue
-
+			mid = ( (x1+x2)//2, (y1+y2)//2 )
 			
-		if len(curves_x) <= 0:
-			curves_x = nonzero_x_grouped
-			curves_y = nonzero_y_grouped
-			discontinuity = np.ones_like(curves_x)
-			continue
-
-		# for some reason, curves is not considered a np.array, just a normal list! FIX THIS
-
-		prev_x = np.array([ c[-1] for c in curves_x ])
-
-		print(nonzero_x_grouped)
-
-
-		# Temporary thing
-		for j in range(len(prev_x)):
-			thresh = discontinuity[j]*diff_threshold
-			avg_x = np.array([ np.average(group) for group in nonzero_x_grouped ])
-			x = prev_x[j]
-
-			dist = np.array( np.absolute(avg_x-x)/x )
-			
-			if len(dist[dist<thresh]) <= 0 or len(nonzero_x_grouped) <= 0:
-				discontinuity[j] += 1
-				continue
-
-			discontinuity[j] = 1
-			closest = np.argmin(dist[dist<thresh])
-
-
-			curves_x[j] = np.append(curves_x[j], nonzero_x_grouped[closest])
-			curves_y[j] = np.append(curves_y[j], nonzero_y_grouped[closest])
-
-			# This is really sloppy and causes index errors
-			nonzero_x_grouped = np.delete(nonzero_x_grouped, closest)
-			nonzero_y_grouped = np.delete(nonzero_y_grouped, closest)
-
-
-		# New groups -- concat/append!
-
-
-
-
-		# Now we have the pixels grouped into separate arrays (representing separate curves, hopefully)
-		# if len(curves_x) > 0:
-
-		# 	if len(nonzero_x_grouped) != len(curves_x): 
-		# 		# New lane or one lane disappeared
-		# 		for j in range( len(nonzero_x_grouped) ):
-		# 			if j >= len(curves_x):
-		# 				curves_x = np.append( curves_x, nonzero_x_grouped[j] )
-		# 				curves_y = np.append( curves_x, nonzero_y_grouped[j] )
-		# 			else:
-		# 				curves_x[j] = np.concatenate( (curves_x[j], nonzero_x_grouped[j]), axis=0)
-		# 				curves_y[j] = np.concatenate( (curves_y[j], nonzero_y_grouped[j]), axis=0)
-		# 	else:
-		# 		curves_x = np.concatenate( (curves_x,nonzero_x_grouped), axis=1 )
-		# 		curves_y = np.concatenate( (curves_y,nonzero_y_grouped), axis=1 )
-
-		# else:
-		# 	# Initialize curves!
-		# 	for group_x,group_y in zip(nonzero_x_grouped, nonzero_y_grouped):
-		# 		curves_x = np.append(curves_x, group_x)
-		# 		curves_y = np.append(curves_y, group_y)
-
+			for j in range(len(contours)):
+				if cv2.pointPolygonTest(contours[j], mid, True) >= 0:
+					if j in groups:
+						groups[j] = np.append(groups[j], [line], axis=0)
+					else:
+						groups[j] = np.array([line])
+					break
 	
-	print(curves_x)
+	# For K-means
+	criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-	# for gy, gx in zip(curves_y, curves_x):
-	# 	out[gy, gx] = 1
+	for i, lines in groups.items():
 
-	out[curves_y[1], curves_x[1]] = 1
+		# K-means clustering
+		silhouette_coefficient = 0.5
+		silhouette_coefficient_prev = -1
+		cluster_num = 1
 
-	# TODO: polyfit stuff
-	# fits = [ np.polyfit(group_x, group_y, 2)
-	# 		for group_x, group_y in zip(curves_x, curves_y) ]
+		midpoints = np.array([ [(x1+x2)//2,(y1+y2)//2] for x1,y1,x2,y2 in lines ])
+		midpoints = np.float32(midpoints)
 
-	return out		
+		# cluster_means = []
 
+		while silhouette_coefficient > silhouette_coefficient_prev:
+
+			if cluster_num >= len(lines):
+				break
+
+			cluster = sklearn.cluster.KMeans(n_clusters=cluster_num)	
+			cluster_labels = cluster.fit_predict(midpoints)
+
+			cluster_means = []
+			for j in range(cluster_num):
+				cluster_means.append( np.mean(lines[cluster_labels==j],axis=0) )
+
+			if cluster_num > 1:
+				silhouette_coefficient_prev = silhouette_coefficient
+				silhouette_coefficient = sklearn.metrics.silhouette_score(midpoints, cluster_labels)
+
+			cluster_num += 1
+
+		cluster_num -= 1
+
+		print(f'For {cluster_num} clusters, silhouette coefficient of {silhouette_coefficient_prev}. {silhouette_coefficient}')
+		print(cluster_means)
+
+		cluster_means = np.int32(cluster_means)
+
+		for l in cluster_means:
+			x1,y1,x2,y2 = l
+
+			cv2.line(out, (x1,y1), (x2,y2), (0,0,255), 2, cv2.LINE_AA)
+
+		# cv2.drawContours(out, [contours[i]], 0, (0,255,0), 3)
+
+
+	return out
+
+
+img = cv2.imread('lane_test.png')
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+_, thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
 
 f, (ax1, ax2) = plt.subplots(2, 1)
 
-# hist = np.sum(roi, axis=0)
-
 ax1.imshow(thresh)
-ax2.imshow(segmentation(thresh,50))
+ax2.imshow(segmentation_v2(thresh))
 
 plt.show()
