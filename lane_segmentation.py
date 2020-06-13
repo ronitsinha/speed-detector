@@ -2,6 +2,7 @@ import random
 
 import cv2
 import numpy as np
+import numpy.polynomial.polynomial as poly
 from matplotlib import pyplot as plt
 
 import sklearn.cluster # KMeans
@@ -14,14 +15,13 @@ def segmentation_v2 (binary):
 
 	dilation = cv2.dilate(binary, kernel, iterations=1)
 
-	# edges = cv2.Canny(dilation, 100, 200)
 	out = np.dstack(( np.zeros_like(dilation) , np.zeros_like(dilation), np.zeros_like(dilation) )) * 255
 
 	# Filter contours by area
 	contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-	contours = [c for c in contours if cv2.contourArea(c) > 70]
+	contours = [c for c in contours if cv2.contourArea(c) > 1000]
 
-	# cv2.drawContours(out, contours, -1, (0,255,0), 3)
+	lanes = []
 
 	groups = {}
 
@@ -60,7 +60,7 @@ def segmentation_v2 (binary):
 		midpoints = np.array([ [(x1+x2)//2,(y1+y2)//2] for x1,y1,x2,y2 in lines ])
 		midpoints = np.float32(midpoints)
 
-		# cluster_means = []
+		cluster_means = []
 
 		while silhouette_coefficient > silhouette_coefficient_prev:
 
@@ -85,26 +85,64 @@ def segmentation_v2 (binary):
 		print(f'For {cluster_num} clusters, silhouette coefficient of {silhouette_coefficient_prev}. {silhouette_coefficient}')
 		print(cluster_means)
 
-		cluster_means = np.int32(cluster_means)
+		lanes.append(np.int32(cluster_means))
+		color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
 
-		for l in cluster_means:
-			x1,y1,x2,y2 = l
+		# for l in np.int32(lines):
+		# 	x1,y1,x2,y2 = l
 
-			cv2.line(out, (x1,y1), (x2,y2), (0,0,255), 2, cv2.LINE_AA)
+		# 	cv2.line(out, (x1,y1), (x2,y2), color, 2, cv2.LINE_AA)
 
-		# cv2.drawContours(out, [contours[i]], 0, (0,255,0), 3)
+	# for c in contours:
+	# 	color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
+
+	# 	print(c[:,-1])
+
+	# 	cv2.fillPoly(out, [c], color)
+
+	points = np.concatenate((contours[0], contours[1]), axis=0)
+
+
+	cv2.fillPoly(out, [points], (0,200,255))
+
+	# for lane in lanes:
+	# 	color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
+	# 	for l in lane:
+	# 		x1,y1,x2,y2 = l
+	# 		cv2.line(out, (x1,y1), (x2,y2), color, 2, cv2.LINE_AA)
+
+	return out
+
+
+# Why isn't fillPoly working? Let's find out!
+def contour_test (img):
+	out = np.dstack(( np.zeros_like(img) , np.zeros_like(img), np.zeros_like(img) )) * 255
+
 
 
 	return out
 
 
-img = cv2.imread('lane_test.png')
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-_, thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+if __name__ == '__main__':
 
-f, (ax1, ax2) = plt.subplots(2, 1)
+	img = cv2.imread('lane_test2.png')
 
-ax1.imshow(thresh)
-ax2.imshow(segmentation_v2(thresh))
+	roi = img[100:640]
 
-plt.show()
+	gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+	hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+
+	lower_yellow = np.array([0, 27, 161])
+	upper_yellow = np.array([40, 255, 255])
+
+	# Breakthrough: dashed white lines don't matter! they don't separate opposite traffic!
+	# More info here: https://www.123driving.com/dmv/drivers-handbook-pavement-markings
+	_, mask_white = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+	mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+	color_mask = cv2.bitwise_or(mask_yellow, mask_white)
+
+	f, (ax1, ax2) = plt.subplots(2, 1)
+	ax1.imshow(color_mask)
+	ax2.imshow(segmentation_v2(color_mask))
+
+	plt.show()

@@ -3,7 +3,7 @@ import time
 import cv2
 import numpy as np
 
-url = 'http://wzmedia.dot.ca.gov:1935/D3/80_kingvale_eb.stream/index.m3u8'
+url = 'http://wzmedia.dot.ca.gov:1935/D3/80_whitmore_grade.stream/index.m3u8'
 
 lower_yellow = np.array([20, 38, 153], dtype='uint8')
 upper_yellow = np.array([30, 255, 255], dtype='uint8')
@@ -83,12 +83,7 @@ while True:
 			
 			cv2.line(roi, (x1,y1), (x2,y2), (0,0,255), 1, cv2.LINE_AA)
 
-
-
-
-	# TODO: Read this: https://www.hackster.io/kemfic/curved-lane-detection-34f771
-
-	cv2.imwrite('lane_test2.png', subtract)
+	#cv2.imwrite('lane_test2.png', raw)
 
 	cv2.imshow('Source', roi)
 	cv2.imshow('Final', subtract)
