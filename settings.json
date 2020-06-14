@@ -271,5 +271,15 @@
         "vector_angle_min": 30,
         "distance": 0,
         "cropped_rects": []
+    },
+    "80_riverside": {
+        "stream_url": "http://wzmedia.dot.ca.gov/D3/80_riverside.stream/playlist.m3u8",
+        "divider": 240,
+        "divider_horizontal": true,
+        "divider_pass_side": 1,
+        "vector_angle_min": -360,
+        "vector_angle_max": 360,
+        "distance": 0,
+        "cropped_rects": []
     }
 }

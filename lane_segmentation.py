@@ -96,12 +96,15 @@ def segmentation_v2 (binary):
 	# for c in contours:
 	# 	color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
 
-	# 	print(c[:,-1])
-
 	# 	cv2.fillPoly(out, [c], color)
 
 	points = np.concatenate((contours[0], contours[1]), axis=0)
 
+	for y in range(len(out)):
+		for x in range(len(out[j])):
+			if cv2.pointPolygonTest(points, (x,y), True) >= 0:
+				# print(x,y)
+				points = np.append(points, [[[x,y]]], axis=0) 
 
 	cv2.fillPoly(out, [points], (0,200,255))
 
@@ -112,16 +115,6 @@ def segmentation_v2 (binary):
 	# 		cv2.line(out, (x1,y1), (x2,y2), color, 2, cv2.LINE_AA)
 
 	return out
-
-
-# Why isn't fillPoly working? Let's find out!
-def contour_test (img):
-	out = np.dstack(( np.zeros_like(img) , np.zeros_like(img), np.zeros_like(img) )) * 255
-
-
-
-	return out
-
 
 if __name__ == '__main__':
 
