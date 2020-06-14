@@ -2,7 +2,6 @@ import random
 
 import cv2
 import numpy as np
-import numpy.polynomial.polynomial as poly
 from matplotlib import pyplot as plt
 
 import sklearn.cluster # KMeans
@@ -20,8 +19,6 @@ def segmentation_v2 (binary):
 	# Filter contours by area
 	contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	contours = [c for c in contours if cv2.contourArea(c) > 1000]
-
-	lanes = []
 
 	groups = {}
 
@@ -82,37 +79,23 @@ def segmentation_v2 (binary):
 
 		cluster_num -= 1
 
-		print(f'For {cluster_num} clusters, silhouette coefficient of {silhouette_coefficient_prev}. {silhouette_coefficient}')
-		print(cluster_means)
 
-		lanes.append(np.int32(cluster_means))
+		x_pos = np.array([[x1,x2] for x1,_,x2,_ in lines]).ravel()
+		y_pos = np.array([[y1,y2] for _,y1,_,y2 in lines]).ravel()
+		
+		fit = np.polyfit(x_pos,y_pos,2)
+		draw_x = np.linspace(np.min(x_pos), np.max(x_pos))
+		draw_y = np.polyval(fit, draw_x)
+
+		pts = (np.asarray([draw_x, draw_y]).T).astype(np.int32)
+
 		color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
+		cv2.polylines(out, [pts], False, color, 3)
 
 		# for l in np.int32(lines):
 		# 	x1,y1,x2,y2 = l
 
 		# 	cv2.line(out, (x1,y1), (x2,y2), color, 2, cv2.LINE_AA)
-
-	# for c in contours:
-	# 	color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
-
-	# 	cv2.fillPoly(out, [c], color)
-
-	points = np.concatenate((contours[0], contours[1]), axis=0)
-
-	for y in range(len(out)):
-		for x in range(len(out[j])):
-			if cv2.pointPolygonTest(points, (x,y), True) >= 0:
-				# print(x,y)
-				points = np.append(points, [[[x,y]]], axis=0) 
-
-	cv2.fillPoly(out, [points], (0,200,255))
-
-	# for lane in lanes:
-	# 	color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
-	# 	for l in lane:
-	# 		x1,y1,x2,y2 = l
-	# 		cv2.line(out, (x1,y1), (x2,y2), color, 2, cv2.LINE_AA)
 
 	return out
 
