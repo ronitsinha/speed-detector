@@ -3,7 +3,7 @@ import time
 import cv2
 import numpy as np
 
-url = 'http://wzmedia.dot.ca.gov:1935/D3/80_whitmore_grade.stream/index.m3u8'
+url = 'http://wzmedia.dot.ca.gov/D3/50_folsom.stream/index.m3u8'
 
 lower_yellow = np.array([20, 38, 153], dtype='uint8')
 upper_yellow = np.array([30, 255, 255], dtype='uint8')
@@ -27,13 +27,6 @@ cv2.createTrackbar('High H', 'Final', 0, 180, lambda _: None)
 cv2.createTrackbar('High S', 'Final', 0, 255, lambda _: None)
 cv2.createTrackbar('High V', 'Final', 0, 255, lambda _: None)
 
-# Testing out some perspective stuff
-whitmore_grade_pts = np.float32([ [90,94], [230,94], [300,480], [640,429] ])
-donner_lake_pts = np.float32([ [270,180], [406,180], [284,480],[640,367] ])
-screen_pts = np.float32([ [0,0], [400,0], [0,600], [400,600] ])
-
-matrix = cv2.getPerspectiveTransform(whitmore_grade_pts, screen_pts)
-
 cap = cv2.VideoCapture(url)
 
 while True:
@@ -50,10 +43,7 @@ while True:
 	blur = cv2.GaussianBlur(frame, (5,5), 0)
 
 
-	roi = frame[ 100:640 ]
-
-	# TODO: In the actual program, use THIS instead of cropped regions
-	warped = cv2.warpPerspective(frame, matrix, (400,600))
+	roi = frame[50:640,50:480]
 
 	gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 	hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
@@ -83,11 +73,10 @@ while True:
 			
 			cv2.line(roi, (x1,y1), (x2,y2), (0,0,255), 1, cv2.LINE_AA)
 
-	#cv2.imwrite('lane_test2.png', raw)
+	cv2.imwrite('lane_test.png', raw)
 
 	cv2.imshow('Source', roi)
 	cv2.imshow('Final', subtract)
-	cv2.imshow('Warped', warped)
 
 
 
