@@ -9,8 +9,13 @@ import sklearn.metrics # silhouette_score
 
 dist2 = lambda a,b: (a[0]-b[0])**2 + (a[1]-b[1])**2
 
+lanes = []
+
+
 # https://www.ingentaconnect.com/contentone/ist/ei/2016/00002016/00000014/art00011?crawler=true
 def segmentation_v2 (binary):
+	global lanes
+
 
 	kernel = np.ones((4,4), np.uint8)
 	dilation = cv2.dilate(binary, kernel, iterations=1)
@@ -19,13 +24,14 @@ def segmentation_v2 (binary):
 
 	# Filter contours by area
 	contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-	contours = [c for c in contours if cv2.contourArea(c) > 350]
+	contours = [c for c in contours if cv2.contourArea(c) > 1000]
 	sorted_ctrs = sorted(contours, key=lambda c: cv2.boundingRect(c)[0] )
 	
 	groups = [None]*len(sorted_ctrs)
 
 	lane_x = []
 	lane_y = []
+
 
 	linesP = cv2.HoughLinesP(dilation, 1, np.pi / 180, 20, None, 2, 20)
 	if linesP is not None:
@@ -51,6 +57,9 @@ def segmentation_v2 (binary):
 	
 	for lines in groups:
 
+		if lines is None:
+			continue
+
 		x_pos = np.array([[x1,x2] for x1,_,x2,_ in lines]).ravel()
 		y_pos = np.array([[y1,y2] for _,y1,_,y2 in lines]).ravel()
 		
@@ -71,22 +80,27 @@ def segmentation_v2 (binary):
 	# increment by 50 b/c each polyfit has 50 sample points
 	for i in range(0,len(pts)-50,50):
 		lane = np.concatenate( (pts[i:i+50], np.flip(pts[i+50:i+100], axis=0) ) )
+		lanes.append(lane)
+
+	for lane in lanes:
 		color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
 		cv2.fillPoly(out, np.array([lane]), color)
 
-	# https://stackoverflow.com/questions/58377015/counterclockwise-sorting-of-x-y-data
-
-	# cv2.polylines(out, np.array([pts]), False, (0,200,255), 1)
-	# cv2.fillPoly(out, np.array([pts]), (0,200,255))
+		
 	cv2.drawContours(out, sorted_ctrs, -1, (0,255,0))
 
 	return out
 
+
 if __name__ == '__main__':
 
-	img = cv2.imread('lane_test.png')
+	img = cv2.imread('lane_test3.png')
 
-	roi = img[50:640,50:480]
+	# For lane_test2
+	# roi = img[50:640,50:480]
+
+	# For lane_test3
+	roi = img[150:640]
 
 	gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 	hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
@@ -96,12 +110,30 @@ if __name__ == '__main__':
 
 	# Breakthrough: dashed white lines don't matter! they don't separate opposite traffic!
 	# More info here: https://www.123driving.com/dmv/drivers-handbook-pavement-markings
-	_, mask_white = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+	
+	# _, mask_white = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+
+	# For lane_test3
+	_, mask_white = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
 	mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 	color_mask = cv2.bitwise_or(mask_yellow, mask_white)
 
 	f, (ax1, ax2) = plt.subplots(2, 1)
 	ax1.imshow(color_mask)
 	ax2.imshow(segmentation_v2(color_mask))
+
+	def onclick (event): 
+		if event.inaxes == ax2:
+			global lanes
+
+			x, y = ax2.transData.inverted().transform_point([event.x, event.y])
+			print(f"{x}, {y}")
+
+			for i in range(len(lanes)):
+				if cv2.pointPolygonTest(lanes[i], (x, y), True) >= 0:
+					print(f"{x}, {y} inside lane {i}")
+
+
+	cid = f.canvas.mpl_connect('button_press_event', onclick)
 
 	plt.show()
