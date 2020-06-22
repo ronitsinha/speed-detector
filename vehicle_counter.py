@@ -45,6 +45,7 @@ class VehicleCounter (object):
 		self.pass_side = road['divider_pass_side']
 		self.vector_angle_min = road['vector_angle_min']
 		self.vector_angle_max = road['vector_angle_max']
+		self.speed_limit = road['speed_limit']
 
 		self.vehicles = []
 		self.next_vehicle_id = 0
@@ -188,8 +189,9 @@ class VehicleCounter (object):
 					# 	print('FREAK DISTANCE DETECTED!')
 					# 	continue
 
+					speed_percent = speed/self.average_speed
 					speed_diff = (speed-self.average_speed)/self.average_speed
-					vehicle.speed = speed_diff # Assuming average speed translates to 70 mph!
+					vehicle.speed = speed_percent*self.speed_limit # Assuming average speed translates to 70 mph!
 
 					if speed_diff >= self.average_threshold:
 						print(f"{vehicle.id} is SPEEDING: {speed_diff}")
