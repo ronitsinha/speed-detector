@@ -4,9 +4,6 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-import sklearn.cluster # KMeans
-import sklearn.metrics # silhouette_score
-
 dist2 = lambda a,b: (a[0]-b[0])**2 + (a[1]-b[1])**2
 
 lanes = []
@@ -94,13 +91,13 @@ def segmentation_v2 (binary):
 
 if __name__ == '__main__':
 
-	img = cv2.imread('lane_test3.png')
+	img = cv2.imread('lane_test2.png')
 
 	# For lane_test2
-	# roi = img[50:640,50:480]
+	roi = img[50:640,50:480]
 
 	# For lane_test3
-	roi = img[150:640]
+	# roi = img[150:640]
 
 	gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 	hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
@@ -111,10 +108,10 @@ if __name__ == '__main__':
 	# Breakthrough: dashed white lines don't matter! they don't separate opposite traffic!
 	# More info here: https://www.123driving.com/dmv/drivers-handbook-pavement-markings
 	
-	# _, mask_white = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+	_, mask_white = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
 
 	# For lane_test3
-	_, mask_white = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
+	# _, mask_white = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
 	mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 	color_mask = cv2.bitwise_or(mask_yellow, mask_white)
 

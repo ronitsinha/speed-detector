@@ -7,7 +7,6 @@
         "divider_pass_side": -1,
         "vector_angle_min": 85,
         "vector_angle_max": 175,
-        "distance": 0.0366458333,
         "cropped_rects": [
             [
                 [
@@ -48,7 +47,6 @@
         "divider_pass_side": -1,
         "vector_angle_min": -150,
         "vector_angle_max": -110,
-        "distance": 0.0314394,
         "cropped_rects": [
             [
                 [
@@ -269,7 +267,6 @@
         "divider_pass_side": 1,
         "vector_angle_max": 90,
         "vector_angle_min": 30,
-        "distance": 0,
         "cropped_rects": []
     },
     "80_riverside": {
@@ -279,7 +276,6 @@
         "divider_pass_side": 1,
         "vector_angle_min": -360,
         "vector_angle_max": 360,
-        "distance": 0,
         "cropped_rects": []
     }
 }

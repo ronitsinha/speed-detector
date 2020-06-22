@@ -53,19 +53,12 @@ class VehicleCounter (object):
 		self.max_unseen_frames = 10
 
 		self.sample_num = samples
+		self.samples = []
+		self.average_speed = -1
+		self.average_threshold = 0.3
 
-		if samples == 0:
-			print('DISTANCE MODE')
-			self.distance = road['distance']
-			self.fps = fps
-		else:
-			print('AVERAGE MODE')
-			self.samples = []
-			self.average_speed = -1
-			self.average_threshold = 0.3
-
-			self.average_distance = -1
-			self.distances = []
+		self.average_distance = -1
+		self.distances = []
 
 	@staticmethod
 	def get_vector (a, b):
@@ -169,50 +162,37 @@ class VehicleCounter (object):
 		# Count any uncounted vehicles that are past the divider
 		for vehicle in self.vehicles:
 			if not vehicle.counted and self.is_past_divider(vehicle.last_position):
-				if self.sample_num == 0:
-					# Distance mode
 
-					# Running average of first 20-100 cars, use that as a benchmark (zeroing out the scale)
-					time_alive = (frame_number - vehicle.start_frame)/self.fps
-					# Convert to hours
-					time_alive = time_alive / 60 / 60
+				# Average mode
+				distance = self.get_vector(vehicle.last_position, vehicle.positions[0])[0] # We don't need the angle
 
-					# MPH
-					vehicle.speed = self.distance / time_alive
+				speed = distance / (frame_number - vehicle.start_frame)
+				print(f"SPEED: {speed}")		
 
-					# print(self.distance, time_alive)
-				
+				if len(self.samples) < self.sample_num:
+					# Add to samples
+
+					self.samples.append(speed)
+					self.distances.append(distance)
+
+					# Should we take the average now?
+					if len(self.samples) == self.sample_num:
+						self.average_speed = sum(self.samples)/len(self.samples)
+						self.average_distance = sum(self.distances)/len(self.distances)
+
+						print(f"AVERAGE SPEED: {self.average_speed}")
+
 				else:
-					# Average mode
-					distance = self.get_vector(vehicle.last_position, vehicle.positions[0])[0] # We don't need the angle
+					# Throw it out if the distance is bizarrely long/short
+					# if abs(distance-self.average_distance)/self.average_distance > 0.3:
+					# 	print('FREAK DISTANCE DETECTED!')
+					# 	continue
 
-					speed = distance / (frame_number - vehicle.start_frame)
-					print(f"SPEED: {speed}")		
+					speed_diff = (speed-self.average_speed)/self.average_speed
+					vehicle.speed = speed_diff # Assuming average speed translates to 70 mph!
 
-					if len(self.samples) < self.sample_num:
-						# Add to samples
-
-						self.samples.append(speed)
-						self.distances.append(distance)
-
-						# Should we take the average now?
-						if len(self.samples) == self.sample_num:
-							self.average_speed = sum(self.samples)/len(self.samples)
-							self.average_distance = sum(self.distances)/len(self.distances)
-
-							print(f"AVERAGE SPEED: {self.average_speed}")
-
-					else:
-						# Throw it out if the distance is bizarrely long/short
-						# if abs(distance-self.average_distance)/self.average_distance > 0.3:
-						# 	print('FREAK DISTANCE DETECTED!')
-						# 	continue
-
-						speed_diff = (speed-self.average_speed)/self.average_speed
-						vehicle.speed = speed_diff # Assuming average speed translates to 70 mph!
-
-						if speed_diff >= self.average_threshold:
-							print(f"{vehicle.id} is SPEEDING: {speed_diff}")
+					if speed_diff >= self.average_threshold:
+						print(f"{vehicle.id} is SPEEDING: {speed_diff}")
 
 				self.vehicle_count += 1
 				vehicle.counted = True
